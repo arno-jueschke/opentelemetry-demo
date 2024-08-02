@@ -661,14 +661,17 @@ services:
     ports:
       - "${JAEGER_SERVICE_PORT}"         # Jaeger UI
       - "${OTEL_COLLECTOR_PORT_GRPC}"
+    expose:
+      - "${OTEL_COLLECTOR_PORT_GRPC}"
     environment:
       - METRICS_STORAGE_TYPE=prometheus
+      - COLLECTOR_OTLP_ENABLED=true
     logging: *logging
 
   # Grafana
   grafana:
     image: ${GRAFANA_IMAGE}
-    container_name: grafana
+    container_name: otel-demo-grafana
     deploy:
       resources:
         limits:
@@ -703,7 +706,12 @@ services:
       - "${OTEL_COLLECTOR_PORT_GRPC}"
       - "${OTEL_COLLECTOR_PORT_HTTP}"
     depends_on:
-      - jaeger
+        jaeger:
+          condition: service_started
+        opensearch:
+          condition: service_started 
+        opensearch-dataprepper:
+          condition: service_started 
     logging: *logging
     environment:
       - ENVOY_PORT
@@ -715,7 +723,7 @@ services:
   # Prometheus
   prometheus:
     image: ${PROMETHEUS_IMAGE}
-    container_name: prometheus
+    container_name: ${PROMETHEUS_SERVICE_HOST}
     command:
       - --web.console.templates=/etc/prometheus/consoles
       - --web.console.libraries=/etc/prometheus/console_libraries
@@ -725,7 +733,8 @@ services:
       - --web.enable-lifecycle
       - --web.route-prefix=/
       - --enable-feature=exemplar-storage
-      - --enable-feature=otlp-write-receiver
+      - --web.enable-remote-write-receiver    # for tempo to store span_metrics and service graph info
+      - --enable-feature=otlp-write-receiver  # for otel coll to use push
     volumes:
       - ./src/prometheus/prometheus-config.yaml:/etc/prometheus/prometheus-config.yaml
     deploy:
@@ -764,3 +773,52 @@ services:
     ports:
       - "9200"
     logging: *logging
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.15.0
+    container_name: opensearch-dashboards
+    depends_on:
+      - opensearch
+    restart: unless-stopped
+    ports:
+      - 5601:5601
+    expose:
+      - "5601"
+    environment:
+      - 'OPENSEARCH_HOSTS=["http://opensearch:9200"]'
+      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true" # disables security dashboards plugin in OpenSearch Dashboards
+    logging: *logging
+
+  opensearch-dataprepper:
+    image: opensearchproject/data-prepper:2.8.0
+    # opensearchproject/data-prepper:2.5.0 changed linux distro so that healthcheck is no longer working!
+    # image: opensearch-data-prepper:2.2.1 # local build of data-prepper
+    container_name: opensearch-dataprepper
+    depends_on: 
+      opensearch:
+        condition: service_started 
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+    ports:
+      - 21890:21890
+      - 22021:22021
+      - 22022:22022
+    expose:
+      - "21890"
+      - "22021"
+      - "22022"
+    volumes:
+      - ./src/data-prepper/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml 
+      - ./src/data-prepper/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
+    healthcheck:
+      # test: ["CMD-SHELL", "nc -nvz localhost 22022 || exit 1"] 
+      # for using curl see https://curl.se/mail/archive-2022-04/0027.html
+      test: ["CMD-SHELL", "curl -s --connect-timeout 2 telnet://localhost:22022 </dev/null || exit 1"] 
+      interval: 1m
+      timeout: 20s
+      retries: 3
+      start_period: 40s      
+    logging: *logging            

@@ -104,7 +104,10 @@ exporters:
       endpoint: "http://opensearch:9200"
       tls:
         insecure: true
-
+  otlp/data-prepper:
+    endpoint: opensearch-dataprepper:21890
+    tls:
+      insecure: true   
 processors:
   batch:
   transform:
@@ -124,7 +127,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [transform, batch]
-      exporters: [otlp, debug, spanmetrics]
+      exporters: [otlp, debug, spanmetrics, otlp/data-prepper]
     metrics:
       receivers: [hostmetrics, docker_stats, httpcheck/frontendproxy, otlp, prometheus, redis, spanmetrics]
       processors: [batch]
