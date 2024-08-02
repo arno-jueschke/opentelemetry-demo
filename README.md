@@ -10,6 +10,13 @@
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/opentelemetry-demo)](https://artifacthub.io/packages/helm/opentelemetry-helm/opentelemetry-demo)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/9247/badge)](https://www.bestpractices.dev/en/projects/9247)
 
+
+## Before you start ...
+This is a fork of the original OpenTelemetry Demo project at https://github.com/open-telemetry/opentelemetry-demo.
+
+The original demo code is located at the **main** branch.
+Modifications to the demo are done at branch **Dev/main**.
+
 ## Welcome to the OpenTelemetry Astronomy Shop Demo
 
 This repository contains the OpenTelemetry Astronomy Shop, a microservice-based
