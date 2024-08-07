@@ -661,8 +661,6 @@ services:
     ports:
       - "${JAEGER_SERVICE_PORT}"         # Jaeger UI
       - "${OTEL_COLLECTOR_PORT_GRPC}"
-    expose:
-      - "${OTEL_COLLECTOR_PORT_GRPC}"
     environment:
       - METRICS_STORAGE_TYPE=prometheus
       - COLLECTOR_OTLP_ENABLED=true
@@ -719,6 +717,8 @@ services:
       - OTEL_COLLECTOR_HOST
       - OTEL_COLLECTOR_PORT_GRPC
       - OTEL_COLLECTOR_PORT_HTTP
+      - PROMETHEUS_ADDR
+      - DOCKER_DAEMON
 
   # Prometheus
   prometheus:
